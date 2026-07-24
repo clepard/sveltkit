@@ -1,10 +1,10 @@
-# Client website editor
+# Cloudflare SvelteKit website editor
 
-A self-hosted SvelteKit 2 / Svelte 5 website with an in-place visual editor using adapter-node, SQLite, Drizzle migrations, database-backed Better Auth sessions, Zod validation, and local Sharp-optimized media. In `/admin`, use the page selector in the toolbar, click outlined text to edit it directly, or click the hero image to open the blurred-backdrop media picker. Pages are provisioned by the developer; client accounts can edit them but cannot create new routes.
+A SvelteKit 2 / Svelte 5 visual website editor deployed to Cloudflare Workers. Content, users, and sessions live in Cloudflare D1; uploaded media lives in a private R2 bucket and is served through the application.
 
-## Building editable pages
+## Editable pages
 
-The public page and visual editor render the same `SitePage` component. You no longer wire form fields such as `draft.navigation.about` into the admin screen. Build the site with the reusable editor components and give each editable value a stable ID:
+The public page and visual editor render the same `SitePage` component. Add editable content with the primitives in `src/lib/builder` and give every value a stable ID:
 
 ```svelte
 <EditSurface id="contact" label="Contact section" as="section">
@@ -14,89 +14,95 @@ The public page and visual editor render the same `SitePage` component. You no l
 </EditSurface>
 ```
 
-When this component appears in `/admin`, its text, image and colors register themselves and become editable automatically. The button destination stays fixed in source code; only its visible label and colors can be changed. New text is stored as escaped structured JSON, not HTML. Use unique, permanent IDs: changing an ID creates a new content value instead of renaming the old one.
+Text is stored as escaped structured JSON, not HTML. Button destinations and application code remain developer-controlled. Changing an ID creates a new content value rather than renaming the old value.
 
-The available primitives are in `src/lib/builder/`: `EditText`, `EditImage`, `EditButton`, and `EditSurface`. The starter layout is `src/lib/components/SitePage.svelte`. Normal Svelte markup can be mixed around these primitives; only annotated components are editable, which keeps scripts, links, layout behavior, and arbitrary DOM attributes outside the client's control.
+## Local development
 
-## Local test site
-
-Requires Node.js 22 or newer and `tar` (for upload backups).
+Requires Node.js 22 or newer.
 
 ```sh
-cp .env.example .env
 npm install
+cp .dev.vars.example .dev.vars
+cp .env.example .env
 npm run db:migrate
-npm run db:seed
 npm run dev
 ```
 
-Open `http://localhost:5173`. The dummy editor account is user ID `admin`, password `admin`. This intentionally weak credential is only for local/disposable testing. Registration is disabled in the running application, and the seed script refuses to create this account in production unless an explicit unsafe override is supplied.
-
-Drizzle schema changes are made in `src/lib/server/db/schema.ts`, committed with `npm run db:generate`, and applied with `npm run db:migrate`. Never use `drizzle-kit push` in production.
-
-## Storage and security model
-
-Production defaults are fixed outside each application release:
-
-- Database: `/var/lib/client-website/database/website.sqlite`
-- Media: `/var/lib/client-website/uploads`
-- Backups: `/var/backups/client-website`
-
-All of these paths, plus local `data/`, SQLite sidecar files, uploads, environment secrets, backups, and adapter output are ignored by Git. Draft and published JSON are separate columns; no complete HTML is stored. Publishing validates the draft and writes both its immutable revision and published snapshot in one SQLite transaction.
-
-Images are limited to 10 MB, 12,000 pixels per side, and 40 megapixels. Sharp must successfully decode JPEG, PNG, WebP, or AVIF input. The original bytes and filename are discarded; only re-encoded WebP/AVIF variants with random UUID names are exposed. Alt text is required and kept in SQLite.
-
-SQLite starts in WAL mode with foreign keys, a 5-second busy timeout, and `synchronous=NORMAL`. Backups use SQLite's online backup API, so copying a live WAL database directly is unnecessary and unsafe.
-
-## Production deployment
-
-Create a dedicated account and persistent directories once:
+Use long random values in `.dev.vars` and use the same `SETUP_TOKEN` in `.env`. In another terminal, provision the local administrator and starter pages:
 
 ```sh
-sudo useradd --system --home /var/lib/client-website --shell /usr/sbin/nologin client-website
-sudo install -d -o client-website -g client-website -m 0750 \
-  /var/lib/client-website/database /var/lib/client-website/uploads \
-  /var/backups/client-website /opt/client-website
+npm run db:seed
 ```
 
-Deploy each release to a versioned directory below `/opt/client-website`, run `npm ci && npm run build`, then point `/opt/client-website/current` at that release. The symlink can change on every deployment; `/var/lib/client-website` remains untouched.
+Open `http://localhost:5173/admin/login` and sign in as `admin` with the `ADMIN_PASSWORD` from `.env`.
 
-Create `/etc/client-website.env` (mode `0600`):
+## Cloudflare deployment
 
-```ini
-DATABASE_PATH=/var/lib/client-website/database/website.sqlite
-UPLOAD_DIR=/var/lib/client-website/uploads
-BACKUP_DIR=/var/backups/client-website
-BETTER_AUTH_URL=https://example.com
-BETTER_AUTH_SECRET=replace-with-output-of-openssl-rand-base64-32
-HOST=127.0.0.1
-PORT=3000
-ORIGIN=https://example.com
-```
-
-Apply migrations as the service user before restarting. Do not run the insecure demo seed in production.
+Authenticate Wrangler and deploy once:
 
 ```sh
-sudo -u client-website env NODE_ENV=production \
-  DATABASE_PATH=/var/lib/client-website/database/website.sqlite npm run db:migrate
-sudo cp deploy/client-website.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now client-website
+npx wrangler login
+npm run deploy
 ```
 
-Use either `deploy/nginx.conf` or `deploy/Caddyfile` as the TLS reverse proxy template. Both forward requests to adapter-node on loopback; set the real hostname and enable HTTPS. `ORIGIN` and `BETTER_AUTH_URL` must match that public HTTPS origin.
+Wrangler automatically provisions and binds the D1 database and R2 bucket declared in `wrangler.jsonc`. A Git-connected Cloudflare build provisions them in the same way.
 
-## Daily backup and restore
-
-Install and enable the supplied systemd timer:
+Set production secrets. `BETTER_AUTH_URL` must be the final HTTPS Workers or custom-domain origin.
 
 ```sh
-sudo cp deploy/client-website-backup.{service,timer} /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now client-website-backup.timer
-sudo systemctl start client-website-backup.service  # initial test
+npx wrangler secret put BETTER_AUTH_SECRET
+npx wrangler secret put BETTER_AUTH_URL
+npx wrangler secret put SETUP_TOKEN
 ```
 
-It creates an online SQLite snapshot and a compressed uploads archive daily at 02:30, retaining 14 days by default. Backups on the same disk do not protect against disk loss: sync `/var/backups/client-website` to encrypted off-host storage and regularly test restores.
+Apply the schema after the first deployment has provisioned D1:
 
-To restore, stop the app, preserve the current data directories, restore one matching SQLite snapshot and uploads archive, verify ownership is `client-website:client-website`, then start the service. Never overwrite the live database while the app is running.
+```sh
+npm run db:migrate:remote
+```
+
+Provision the production administrator once:
+
+```sh
+SEED_URL=https://your-site.example \
+SETUP_TOKEN='the-same-setup-token' \
+ADMIN_PASSWORD='a-strong-password' \
+npm run db:seed
+```
+
+Then remove the one-time setup secret so the endpoint becomes unavailable:
+
+```sh
+npx wrangler secret delete SETUP_TOKEN
+```
+
+Public Better Auth registration routes are always blocked. The setup endpoint returns `404` without the setup secret and refuses to run after the administrator exists.
+
+## Cloudflare Git build settings
+
+Use the repository root and these commands:
+
+```text
+Build command: npm run build
+Deploy command: npx wrangler deploy
+```
+
+The committed Wrangler configuration automatically provisions D1 and R2. Add `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, and `SETUP_TOKEN` as encrypted variables in the Cloudflare project, then apply the remote D1 migration after its first deployment.
+
+## Database changes
+
+Change `src/lib/server/db/schema.ts`, generate and commit a migration, then apply it locally and remotely:
+
+```sh
+npm run db:generate
+npm run db:migrate
+npm run db:migrate:remote
+```
+
+Do not use `drizzle-kit push` against production.
+
+## Media model
+
+Uploads are limited to 10 MB, 12,000 pixels per side, and 40 megapixels. JPEG, PNG, WebP, and AVIF inputs are decoded for metadata validation, stored with UUID keys in R2, and served with immutable caching and content-type protection.
+
+The open-source deployment stores validated originals. Automatic transcoding and responsive variants would require adding a Cloudflare Images binding, which is a separately billed product.

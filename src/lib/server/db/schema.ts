@@ -51,7 +51,7 @@ export type PageDocument = {
 	accent: string;
 };
 export type PageContent = LegacyPageContent | PageDocument;
-export type ImageVariant = { width: number; format: 'webp' | 'avif'; filename: string };
+export type ImageVariant = { width: number; format: 'jpeg' | 'png' | 'webp' | 'avif'; filename: string };
 
 export const pages = sqliteTable('pages', {
 	id: text('id').primaryKey(), slug: text('slug').notNull(), title: text('title').notNull(), draftContent: text('draft_content', { mode: 'json' }).$type<PageContent>().notNull(), publishedContent: text('published_content', { mode: 'json' }).$type<PageContent>(),

@@ -7,14 +7,13 @@
 	}>();
 	const builder = useBuilder();
 	let image = $derived(builder.images.find((item) => item.id === builder.document.images[id]));
-	let webp = $derived(image?.variants.filter((variant) => variant.format === 'webp').at(-1));
-	let avif = $derived(image?.variants.filter((variant) => variant.format === 'avif').at(-1));
+	let source = $derived(image?.variants.at(-1));
 	$effect(() => builder.registerImage(id));
 </script>
 
 {#snippet visual()}
-	{#if image && webp}
-		<picture>{#if avif}<source srcset={'/media/' + avif.filename} type="image/avif" />{/if}<img src={'/media/' + webp.filename} alt={image.alt} width={image.width} height={image.height} /></picture>
+	{#if image && source}
+		<img src={'/media/' + source.filename} alt={image.alt} width={image.width} height={image.height} />
 	{:else if fallback}{@render fallback()}{/if}
 {/snippet}
 

@@ -1,14 +1,8 @@
-import { mkdirSync } from 'node:fs';
-import path from 'node:path';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { assertProductionConfig, databasePath } from '$lib/server/config';
+import { drizzle } from 'drizzle-orm/d1';
 import * as schema from './schema';
-assertProductionConfig();
-mkdirSync(path.dirname(databasePath), { recursive: true, mode: 0o750 });
-export const sqlite = new Database(databasePath);
-sqlite.pragma('foreign_keys = ON');
-sqlite.pragma('journal_mode = WAL');
-sqlite.pragma('busy_timeout = 5000');
-sqlite.pragma('synchronous = NORMAL');
-export const db = drizzle(sqlite, { schema });
+
+export function createDb(binding: D1Database) {
+	return drizzle(binding, { schema });
+}
+
+export type Database = ReturnType<typeof createDb>;

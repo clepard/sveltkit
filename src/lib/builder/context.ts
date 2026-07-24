@@ -6,7 +6,7 @@ export type BuilderImage = {
 	alt: string;
 	width: number;
 	height: number;
-	variants: Array<{ width: number; format: 'webp' | 'avif'; filename: string }>;
+	variants: Array<{ width: number; format: 'jpeg' | 'png' | 'webp' | 'avif'; filename: string }>;
 };
 
 export type BuilderContext = {

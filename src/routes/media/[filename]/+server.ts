@@ -1,15 +1,27 @@
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { error } from '@sveltejs/kit';
-import { uploadDir } from '$lib/server/config';
 import type { RequestHandler } from './$types';
 
-const SAFE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-\d{1,4}\.(?:webp|avif)$/;
-export const GET: RequestHandler = async ({ params }) => {
-	const width = Number(params.filename.match(/-(\d{1,4})\.(?:webp|avif)$/)?.[1]);
-	if (!SAFE_NAME.test(params.filename) || width < 1 || width > 2400 || path.basename(params.filename) !== params.filename) error(404);
-	try {
-		const body = await readFile(path.join(uploadDir, params.filename));
-		return new Response(body, { headers: { 'content-type': params.filename.endsWith('.avif') ? 'image/avif' : 'image/webp', 'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' } });
-	} catch { error(404); }
+const SAFE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:jpg|png|webp|avif)$/;
+const CONTENT_TYPES: Record<string, string> = {
+	jpg: 'image/jpeg',
+	png: 'image/png',
+	webp: 'image/webp',
+	avif: 'image/avif'
+};
+
+export const GET: RequestHandler = async ({ params, platform, request }) => {
+	if (!SAFE_NAME.test(params.filename) || !platform?.env.MEDIA) error(404);
+	const object = await platform.env.MEDIA.get(params.filename);
+	if (!object) error(404);
+	const extension = params.filename.slice(params.filename.lastIndexOf('.') + 1);
+	const headers = new Headers({
+		'content-type': CONTENT_TYPES[extension],
+		'etag': object.httpEtag,
+		'cache-control': 'public, max-age=31536000, immutable',
+		'x-content-type-options': 'nosniff'
+	});
+	if (request.headers.get('if-none-match') === object.httpEtag) {
+		return new Response(null, { headers, status: 304 });
+	}
+	return new Response(object.body, { headers });
 };
