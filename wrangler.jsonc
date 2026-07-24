@@ -7,6 +7,9 @@
 	"observability": {
 		"enabled": true
 	},
+	"vars": {
+		"BETTER_AUTH_URL": "https://sveltkit.xander7006.workers.dev"
+	},
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
