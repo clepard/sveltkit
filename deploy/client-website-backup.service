@@ -1,0 +1,14 @@
+[Unit]
+Description=Back up client website SQLite database and uploads
+
+[Service]
+Type=oneshot
+User=client-website
+Group=client-website
+WorkingDirectory=/opt/client-website/current
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/client-website.env
+ExecStart=/usr/bin/npm run backup
+ReadWritePaths=/var/lib/client-website /var/backups/client-website
+ProtectSystem=strict
+PrivateTmp=true

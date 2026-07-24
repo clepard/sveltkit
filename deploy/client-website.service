@@ -1,0 +1,21 @@
+[Unit]
+Description=Client website SvelteKit server
+After=network.target
+
+[Service]
+Type=simple
+User=client-website
+Group=client-website
+WorkingDirectory=/opt/client-website/current
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/client-website.env
+ExecStart=/usr/bin/node build
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/client-website
+
+[Install]
+WantedBy=multi-user.target
