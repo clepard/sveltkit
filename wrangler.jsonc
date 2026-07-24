@@ -13,13 +13,13 @@
 	},
 	"d1_databases": [
 		{
-			"binding": "DB",
+			"binding": "CONTENT_DB",
 			"migrations_dir": "drizzle"
 		}
 	],
 	"r2_buckets": [
 		{
-			"binding": "MEDIA"
+			"binding": "MEDIA_STORE"
 		}
 	]
 }

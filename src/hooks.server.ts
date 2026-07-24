@@ -8,7 +8,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (!env) return new Response('Cloudflare bindings are unavailable. Run the app with Wrangler.', { status: 503 });
 	const auth = createAuth(env, event.url.origin);
 	event.locals.auth = auth;
-	event.locals.db = createDb(env.DB);
+	event.locals.db = createDb(env.CONTENT_DB);
 	const current = await auth.api.getSession({ headers: event.request.headers });
 	event.locals.user = current?.user ?? null; event.locals.session = current?.session ?? null;
 	if (event.url.pathname.startsWith('/api/auth/sign-up')) return new Response('Not found', { status: 404 });

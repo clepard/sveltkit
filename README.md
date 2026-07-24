@@ -45,7 +45,7 @@ npx wrangler login
 npm run deploy
 ```
 
-Wrangler automatically provisions and binds the D1 database and R2 bucket declared in `wrangler.jsonc`. A Git-connected Cloudflare build provisions them in the same way.
+Wrangler automatically provisions and binds the `CONTENT_DB` D1 database and `MEDIA_STORE` R2 bucket declared in `wrangler.jsonc`. A Git-connected Cloudflare build provisions them in the same way.
 
 Set production secrets. `BETTER_AUTH_URL` must be the final HTTPS Workers or custom-domain origin.
 

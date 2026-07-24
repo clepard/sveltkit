@@ -66,7 +66,7 @@ export const actions: Actions = {
 	upload: async (event) => {
 		const admin = requireAdmin(event);
 		const db = event.locals.db;
-		const bucket = event.platform?.env.MEDIA;
+		const bucket = event.platform?.env.MEDIA_STORE;
 		if (!bucket) return fail(503, { uploadError: 'Media storage is unavailable' });
 		const form = await event.request.formData();
 		const file = form.get('image');

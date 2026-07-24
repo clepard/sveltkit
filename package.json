@@ -13,8 +13,8 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"cf-typegen": "wrangler types",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "wrangler d1 migrations apply DB --local",
-		"db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+		"db:migrate": "wrangler d1 migrations apply CONTENT_DB --local",
+		"db:migrate:remote": "wrangler d1 migrations apply CONTENT_DB --remote",
 		"db:seed": "tsx scripts/seed.ts"
 	},
 	"devDependencies": {

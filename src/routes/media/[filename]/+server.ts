@@ -10,8 +10,8 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 export const GET: RequestHandler = async ({ params, platform, request }) => {
-	if (!SAFE_NAME.test(params.filename) || !platform?.env.MEDIA) error(404);
-	const object = await platform.env.MEDIA.get(params.filename);
+	if (!SAFE_NAME.test(params.filename) || !platform?.env.MEDIA_STORE) error(404);
+	const object = await platform.env.MEDIA_STORE.get(params.filename);
 	if (!object) error(404);
 	const extension = params.filename.slice(params.filename.lastIndexOf('.') + 1);
 	const headers = new Headers({

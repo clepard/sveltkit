@@ -11,8 +11,8 @@ declare global {
 		}
 		interface Platform {
 			env: {
-				DB: D1Database;
-				MEDIA: R2Bucket;
+				CONTENT_DB: D1Database;
+				MEDIA_STORE: R2Bucket;
 				BETTER_AUTH_SECRET: string;
 				BETTER_AUTH_URL?: string;
 				SETUP_TOKEN?: string;

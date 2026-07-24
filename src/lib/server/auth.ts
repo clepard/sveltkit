@@ -9,7 +9,7 @@ export function createAuth(env: App.Platform['env'], requestOrigin: string) {
 		appName: 'Client Website Editor',
 		baseURL,
 		secret: env.BETTER_AUTH_SECRET,
-		database: drizzleAdapter(createDb(env.DB), { provider: 'sqlite', schema }),
+		database: drizzleAdapter(createDb(env.CONTENT_DB), { provider: 'sqlite', schema }),
 		// Public sign-up requests are blocked in hooks.server.ts. The internal setup
 		// endpoint uses this API once to provision the administrator.
 		emailAndPassword: { enabled: true, disableSignUp: false, minPasswordLength: 8 },
