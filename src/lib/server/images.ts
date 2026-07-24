@@ -12,6 +12,12 @@ const FORMATS = {
 	avif: { format: 'avif', extension: 'avif', contentType: 'image/avif' }
 } as const;
 
+export function imageAltFromFilename(filename: string) {
+	const withoutExtension = filename.replace(/\.[^.]+$/, '');
+	const readable = withoutExtension.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+	return (readable || 'Uploaded image').slice(0, 240);
+}
+
 export async function storeImage(file: File, id: string, bucket: R2Bucket): Promise<{
 	width: number;
 	height: number;

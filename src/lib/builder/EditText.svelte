@@ -5,28 +5,33 @@
 		id: string; as?: string; fallback?: string; class?: string; multiline?: boolean;
 	}>();
 	const builder = useBuilder();
-	let value = $derived(builder.document.fields[id] ?? fallback);
+	function initialValue() { return builder.document.fields[id] ?? fallback; }
+	let value = $state(initialValue());
 
-	$effect(() => builder.registerText(id, fallback));
-
-	function update(event: Event) {
-		builder.document.fields[id] = (event.currentTarget as HTMLElement).textContent ?? '';
-	}
+	$effect(() => {
+		builder.registerText(id, fallback);
+		builder.document.fields[id] = value ?? '';
+	});
 
 	function keydown(event: KeyboardEvent) {
 		if (!multiline && event.key === 'Enter') event.preventDefault();
 	}
 </script>
 
-<svelte:element
-	this={as}
-	class={`${className}${builder.editing ? ' cms-editable' : ''}`}
-	contenteditable={builder.editing ? 'true' : undefined}
-	role={builder.editing ? 'textbox' : undefined}
-	aria-label={builder.editing ? `Edit ${id}` : undefined}
-	oninput={update}
-	onkeydown={keydown}
->{value}</svelte:element>
+{#if builder.editing}
+	<svelte:element
+		this={as}
+		class={`${className} cms-editable`}
+		contenteditable="true"
+		role="textbox"
+		tabindex="0"
+		aria-label={`Edit ${id}`}
+		bind:textContent={value}
+		onkeydown={keydown}
+	></svelte:element>
+{:else}
+	<svelte:element this={as} class={className}>{value}</svelte:element>
+{/if}
 
 <style>
 	.cms-editable{border-radius:3px;outline:1px dashed transparent;outline-offset:7px;transition:.15s;cursor:text}

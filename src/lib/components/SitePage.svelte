@@ -41,9 +41,6 @@
 		if (editing && !document.collections.beliefs) document.collections.beliefs = structuredClone(defaultSections);
 	});
 
-	function updateSection(index: number, field: 'heading' | 'body', event: Event) {
-		document.collections.beliefs[index][field] = (event.currentTarget as HTMLElement).textContent ?? '';
-	}
 	function addSection() {
 		if (document.collections.beliefs.length < 8) document.collections.beliefs.push({ heading: 'New section', body: 'Click here to write your text.' });
 	}
@@ -76,8 +73,13 @@
 			{#each sections as section, index}
 				<article style:background-color={document.surfaces.work?.background ?? '#f4f1e9'} style:color={document.surfaces.work?.text ?? '#17211b'}>
 					<div class="article-top"><span style:color={document.accent}>0{index + 1}</span>{#if editing}<button type="button" onclick={() => removeSection(index)} disabled={sections.length === 1} aria-label="Remove section">×</button>{/if}</div>
-					<h2 class:cms-editable={editing} contenteditable={editing ? 'true' : undefined} oninput={(event) => updateSection(index, 'heading', event)}>{section.heading}</h2>
-					<p class:cms-editable={editing} contenteditable={editing ? 'true' : undefined} oninput={(event) => updateSection(index, 'body', event)}>{section.body}</p>
+					{#if editing}
+						<h2 class="cms-editable" contenteditable="true" bind:textContent={section.heading}></h2>
+						<p class="cms-editable" contenteditable="true" bind:textContent={section.body}></p>
+					{:else}
+						<h2>{section.heading}</h2>
+						<p>{section.body}</p>
+					{/if}
 				</article>
 			{/each}
 		</div>

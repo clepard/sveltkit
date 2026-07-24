@@ -4,7 +4,7 @@ import { images, pageRevisions, pages } from '$lib/server/db/schema';
 import { requireAdmin } from '$lib/server/authorization';
 import { imageAltSchema, pageDocumentSchema, pageFormSchema } from '$lib/server/validation';
 import { normalizePageDocument } from '$lib/server/page-document';
-import { storeImage } from '$lib/server/images';
+import { imageAltFromFilename, storeImage } from '$lib/server/images';
 import { applySetCookies } from '$lib/server/cookies';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -70,7 +70,7 @@ export const actions: Actions = {
 		if (!bucket) return fail(503, { uploadError: 'Media storage is unavailable' });
 		const form = await event.request.formData();
 		const file = form.get('image');
-		const alt = imageAltSchema.safeParse(form.get('alt'));
+		const alt = imageAltSchema.safeParse(file instanceof File ? imageAltFromFilename(file.name) : '');
 		if (!(file instanceof File) || !alt.success) return fail(400, { uploadError: alt.error?.issues[0]?.message ?? 'Choose an image' });
 		const id = crypto.randomUUID();
 		try {
@@ -80,7 +80,7 @@ export const actions: Actions = {
 				await Promise.allSettled(stored.variants.map((variant) => bucket.delete(variant.filename)));
 				throw cause;
 			}
-			return { uploaded: true };
+			return { uploaded: true, imageId: id, imageAlt: alt.data };
 		} catch (cause) { return fail(400, { uploadError: cause instanceof Error ? cause.message : 'Upload failed' }); }
 	},
 	logout: async (event) => {
