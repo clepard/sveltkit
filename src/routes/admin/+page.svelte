@@ -53,7 +53,7 @@
 
 	const enhanceEditor: SubmitFunction = ({ submitter }) => {
 		const isPublish = submitter?.getAttribute('formaction')?.includes('/publish') ?? false;
-		const submittedDocument = structuredClone(draft);
+		const submittedDocument = $state.snapshot(draft);
 		if (isPublish) publishing = true;
 		return async ({ result, update }) => {
 			await update();
