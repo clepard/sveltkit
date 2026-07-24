@@ -1,8 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, inArray } from 'drizzle-orm';
 import { images, pageRevisions, pages } from '$lib/server/db/schema';
 import { requireAdmin } from '$lib/server/authorization';
-import { imageAltSchema, pageDocumentSchema, pageFormSchema } from '$lib/server/validation';
+import { imageAltSchema, imageDeleteSchema, pageDocumentSchema, pageFormSchema } from '$lib/server/validation';
 import { normalizePageDocument } from '$lib/server/page-document';
 import { imageAltFromFilename, storeImage } from '$lib/server/images';
 import { applySetCookies } from '$lib/server/cookies';
@@ -20,6 +20,13 @@ async function parsePageForm(request: Request) {
 	const title = document.data.fields['site.title']?.trim();
 	if (!title || title.length > 120) return { error: 'Website title must be between 1 and 120 characters.' } as const;
 	return { pageId: fields.data.pageId, title, document: document.data } as const;
+}
+
+function referencedImageIds(document: unknown) {
+	if (!document || typeof document !== 'object' || !('images' in document)) return [];
+	const imageMap = document.images;
+	if (!imageMap || typeof imageMap !== 'object' || Array.isArray(imageMap)) return [];
+	return Object.values(imageMap).filter((value): value is string => typeof value === 'string' && value.length > 0);
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -82,6 +89,41 @@ export const actions: Actions = {
 			}
 			return { uploaded: true, imageId: id, imageAlt: alt.data };
 		} catch (cause) { return fail(400, { uploadError: cause instanceof Error ? cause.message : 'Upload failed' }); }
+	},
+	deleteImages: async (event) => {
+		requireAdmin(event);
+		const bucket = event.platform?.env.MEDIA_STORE;
+		if (!bucket) return fail(503, { deleteError: 'Media storage is unavailable' });
+		const form = await event.request.formData();
+		let requestedIds: unknown;
+		try { requestedIds = JSON.parse(String(form.get('imageIds') ?? '[]')); }
+		catch { return fail(400, { deleteError: 'Invalid image selection' }); }
+		const selected = imageDeleteSchema.safeParse(requestedIds);
+		if (!selected.success) return fail(400, { deleteError: 'Select at least one valid image' });
+
+		const db = event.locals.db;
+		const pageDocuments = await db.select({
+			draftContent: pages.draftContent,
+			publishedContent: pages.publishedContent
+		}).from(pages);
+		const inUse = new Set(pageDocuments.flatMap((page) => [
+			...referencedImageIds(page.draftContent),
+			...referencedImageIds(page.publishedContent)
+		]));
+		const protectedCount = selected.data.filter((id) => inUse.has(id)).length;
+		if (protectedCount) {
+			return fail(409, { deleteError: `${protectedCount} selected image${protectedCount === 1 ? ' is' : 's are'} currently used on a page. Replace it before deleting.` });
+		}
+
+		const stored = await db.select().from(images).where(inArray(images.id, selected.data));
+		if (!stored.length) return { deleted: 0 };
+		await db.delete(images).where(inArray(images.id, stored.map((image) => image.id)));
+		const cleanup = await Promise.allSettled(
+			stored.flatMap((image) => image.variants.map((variant) => bucket.delete(variant.filename)))
+		);
+		const cleanupFailures = cleanup.filter((result) => result.status === 'rejected').length;
+		if (cleanupFailures) console.error(JSON.stringify({ event: 'r2_image_cleanup_failed', count: cleanupFailures }));
+		return { deleted: stored.length };
 	},
 	logout: async (event) => {
 		requireAdmin(event);

@@ -64,3 +64,4 @@ export const pageFormSchema = z.object({
 
 export const loginSchema = z.object({ id: z.string().trim().min(1).max(64), password: z.string().min(1).max(128) });
 export const imageAltSchema = z.string().trim().min(1, 'Alt text is required').max(240);
+export const imageDeleteSchema = z.array(z.string().uuid()).min(1).max(100);
