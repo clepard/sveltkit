@@ -4,8 +4,8 @@
 </script>
 
 <svelte:head>
-	<title>{data.title}</title>
-	<meta name="description" content={data.document?.fields['hero.intro'] ?? 'A demo website ready to edit.'} />
+	<title>AJE+ Skatepark · Klaipėda</title>
+	<meta name="description" content={data.document?.fields['skate.hero.intro'] ?? 'Pirmas uždaras riedėjimo parkas Klaipėdoje.'} />
 </svelte:head>
 
 {#if data.document}
@@ -15,5 +15,5 @@
 {/if}
 
 <style>
-	.website{max-width:1320px;margin:auto;overflow:hidden}.empty{min-height:70vh;max-width:1200px;margin:auto;padding:100px 32px}.empty h1{font:400 55px Georgia,serif}
+	.website{width:100%;margin:0;overflow:hidden}.empty{min-height:70vh;max-width:1200px;margin:auto;padding:100px 32px}.empty h1{font:400 55px Georgia,serif}
 </style>
